@@ -1,0 +1,231 @@
+from tkinter import * # Importing everything from the tkinter module
+from tkinter import messagebox # Importing the messagebox class from the tkinter module
+import random # Importing the random module
+
+
+class Board: # Defining a class named Board
+
+    # Dictionary to map tile values to background colors
+    bg_color = {
+
+        '2': '#eee4da', #hexadecimal color code
+        '4': '#ede0c8',
+        '8': '#edc850',
+        '16': '#edc53f',
+        '32': '#f67c5f',
+        '64': '#f65e3b',
+        '128': '#edcf72',
+        '256': '#edcc61',
+        '512': '#f2b179',
+        '1024': '#f59563',
+        '2048': '#edc22e',
+    }
+    # Dictionary to map tile values to text colors
+    color = {
+        '2': '#776e65',
+        '4': '#f9f6f2',
+        '8': '#f9f6f2',
+        '16': '#f9f6f2',
+        '32': '#f9f6f2',
+        '64': '#f9f6f2',
+        '128': '#f9f6f2',
+        '256': '#f9f6f2',
+        '512': '#776e65',
+        '1024': '#f9f6f2',
+        '2048': '#f9f6f2',
+    }
+
+    def __init__(self):  # Constructor method to initialize the Board class
+        self.n = 4 # Setting the size of the board to 4x4
+        self.window = Tk() # Creating a tkinter window
+        self.window.title("Foram's 2048 Game") # Setting the title of the window
+        self.gameArea = Frame(self.window, bg='azure3') # Creating a frame for the game area with a light blue background
+        self.board = [] # Initializing an empty list to store the game board
+        self.gridCell = [[0] * 4 for i in range(4)] # Initializing a 4x4 grid with all cells set to 0
+        self.compress = False # Initializing a flag to track if compression occurred
+        self.merge = False # Initializing a flag to track if merging occurred
+        self.moved = False  # Initializing a flag to track if a move occurred
+        self.score = 0 # Initializing the score to 0
+
+        for i in range(4):  # Looping through the rows of the grid
+            rows = [] # Initializing an empty list to store the labels in each row
+            for j in range(4):  # Looping through the columns of the grid
+                l = Label(self.gameArea, text='', bg='azure4',
+                font=('arial',22,'bold'),width=4,height=2) # Creating a label widget with default text and background color
+                l.grid(row=i, column=j, padx=7, pady=7) # Placing the label in the grid with padding
+                rows.append(l); # Adding the label to the current row
+            self.board.append(rows) # Adding the row to the game board
+        self.gameArea.grid()   # Displaying the game area
+
+    #  Method to reverse the order of elements in each row of the grid
+    def reverse(self):
+        for ind in range(4):
+            i = 0
+            j = 3
+            while (i < j):
+                self.gridCell[ind][i], self.gridCell[ind][j] = self.gridCell[ind][j], self.gridCell[ind][i]
+                i += 1
+                j -= 1
+
+    # Method to transpose the grid (convert rows into columns and vice versa)
+    def transpose(self):
+        self.gridCell = [list(t) for t in zip(*self.gridCell)]
+
+    # Method to compress the grid by removing empty cells and shifting non-empty cells to the left
+    def compressGrid(self):
+        self.compress = False
+        temp = [[0] * 4 for i in range(4)]
+        for i in range(4):
+            cnt = 0
+            for j in range(4):
+                if self.gridCell[i][j] != 0:
+                    temp[i][cnt] = self.gridCell[i][j]
+                    if cnt != j:
+                        self.compress = True
+                    cnt += 1
+        self.gridCell = temp
+
+    # Method to merge adjacent cells with the same value and update the score accordingly
+    def mergeGrid(self):
+        self.merge = False
+        for i in range(4):
+            for j in range(4 - 1):
+                if self.gridCell[i][j] == self.gridCell[i][j + 1] and self.gridCell[i][j] != 0:
+                    self.gridCell[i][j] *= 2
+                    self.gridCell[i][j + 1] = 0
+                    self.score += self.gridCell[i][j]
+                    self.merge = True
+
+    # Method to generate a random cell with a value of 2
+    def random_cell(self):
+        cells = []
+        for i in range(4):
+            for j in range(4):
+                if self.gridCell[i][j] == 0:
+                    cells.append((i, j))
+        curr = random.choice(cells)
+        i = curr[0]
+        j = curr[1]
+        self.gridCell[i][j] = 2
+
+    # Method to check if any merging is possible in the grid
+    def can_merge(self):
+        for i in range(4):
+            for j in range(3):
+                if self.gridCell[i][j] == self.gridCell[i][j + 1]:
+                    return True
+
+        for i in range(3):
+            for j in range(4):
+                if self.gridCell[i + 1][j] == self.gridCell[i][j]:
+                    return True
+        return False
+
+    # Method to paint the grid by updating the text and background colors of the labels based on the grid values
+    def paintGrid(self):
+        for i in range(4):
+            for j in range(4):
+                if self.gridCell[i][j] == 0:
+                    self.board[i][j].config(text='', bg='azure4')
+                else:
+                    self.board[i][j].config(text=str(self.gridCell[i][j]),
+                                            bg=self.bg_color.get(str(self.gridCell[i][j])),
+                                            fg=self.color.get(str(self.gridCell[i][j])))
+
+
+class Game:
+    def __init__(self, gamep):
+        self.gamep = gamep
+        self.end = False
+        self.won = False
+
+    # Method to start the game
+    def start(self):
+        self.gamep.random_cell()
+        self.gamep.random_cell()
+        self.gamep.paintGrid()
+        self.gamep.window.bind('<Key>', self.link_keys)
+        self.gamep.window.mainloop()
+
+    # Method to handle keyboard inputs
+    def link_keys(self, event):
+        if self.end or self.won:
+            return
+
+        self.gamep.compress = False
+        self.gamep.merge = False
+        self.gamep.moved = False
+
+        presed_key = event.keysym
+
+        if presed_key == 'Up':
+            self.gamep.transpose()
+            self.gamep.compressGrid()
+            self.gamep.mergeGrid()
+            self.gamep.moved = self.gamep.compress or self.gamep.merge
+            self.gamep.compressGrid()
+            self.gamep.transpose()
+
+        elif presed_key == 'Down':
+            self.gamep.transpose()
+            self.gamep.reverse()
+            self.gamep.compressGrid()
+            self.gamep.mergeGrid()
+            self.gamep.moved = self.gamep.compress or self.gamep.merge
+            self.gamep.compressGrid()
+            self.gamep.reverse()
+            self.gamep.transpose()
+
+        elif presed_key == 'Left':
+            self.gamep.compressGrid()
+            self.gamep.mergeGrid()
+            self.gamep.moved = self.gamep.compress or self.gamep.merge
+            self.gamep.compressGrid()
+
+        elif presed_key == 'Right':
+            self.gamep.reverse()
+            self.gamep.compressGrid()
+            self.gamep.mergeGrid()
+            self.gamep.moved = self.gamep.compress or self.gamep.merge
+            self.gamep.compressGrid()
+            self.gamep.reverse()
+        else:
+            pass
+
+        self.gamep.paintGrid()
+        print(self.gamep.score)
+        # Checking for win condition
+        flag = 0
+        for i in range(4):
+            for j in range(4):
+                if (self.gamep.gridCell[i][j] == 2048):
+                    flag = 1
+                    break
+
+        if (flag == 1):   # Found 2048
+            self.won = True
+            messagebox.showinfo('2048', message='You Wonnn!!')
+            print("won")
+            return
+        # Checking for game over condition
+        for i in range(4):
+            for j in range(4):
+                if self.gamep.gridCell[i][j] == 0:
+                    flag = 1
+                    break
+
+        if not (flag or self.gamep.can_merge()):
+            self.end = True
+            messagebox.showinfo('2048', 'Game Over!!!')
+            print("Over")
+        # Generating a new random cell if a move was made
+        if self.gamep.moved:
+            self.gamep.random_cell()
+
+        self.gamep.paintGrid()
+
+# Creating an instance of the Board class
+gamep = Board()
+# Creating an instance of the Game class and starting the game
+game2048 = Game(gamep)
+game2048.start()
